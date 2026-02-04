@@ -8,20 +8,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type INotebookService interface {
 	Create(ctx context.Context, req *dto.CreateNotebookRequest) (*dto.CreateNotebookResponse, error)
 	Show(ctx context.Context, id uuid.UUID) (*dto.ShowNotebookResponse, error)
+	Update(ctx context.Context, req *dto.UpdateNotebookRequest) (*dto.UpdateNotebookResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type notebookService struct {
 	notebookRepository repository.INotebookRepository
+	db *pgxpool.Pool
 }
 
-func NewNotebookService(notebookRepository repository.INotebookRepository) INotebookService {
+func NewNotebookService(notebookRepository repository.INotebookRepository, db *pgxpool.Pool) INotebookService {
 	return &notebookService{
 		notebookRepository: notebookRepository,
+		db: db,
 	}
 }
 
@@ -55,8 +61,64 @@ func (c * notebookService) Show(ctx context.Context, id uuid.UUID) (*dto.ShowNot
 		Name: 		notebook.Name,
 		ParentId: 	notebook.ParentId,
 		CreatedAt: 	notebook.CreatedAt,
-		UpdatedAt:	notebook.UpdatedAt,
+		UpdatedAt:	notebook.UpdatedAt, 
 	}
 
 	return &res, nil
 }
+
+func (c * notebookService) Update(ctx context.Context, req *dto.UpdateNotebookRequest) (*dto.UpdateNotebookResponse, error) {
+	notebook, err := c.notebookRepository.GetById(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	notebook.Name = req.Name
+	notebook.UpdatedAt = &now
+
+
+	err = c.notebookRepository.Update(ctx, notebook)
+	if err != nil {
+		return nil, err
+	}
+
+	res := dto.UpdateNotebookResponse{
+		Id: 		notebook.Id,
+	}
+
+	return &res, nil
+}
+
+func (c * notebookService) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := c.notebookRepository.GetById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	tx, err := c.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+	noteBookRepo := c.notebookRepository.UsingTx(ctx, tx )
+
+	err = noteBookRepo.DeleteById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = noteBookRepo.NullifyParentById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+

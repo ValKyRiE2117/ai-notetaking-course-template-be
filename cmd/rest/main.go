@@ -29,7 +29,7 @@ func main() {
 
 	// Service
 	exampleService := service.NewExampleService(exampleRepository)
-	notebookService := service.NewNotebookService(notebookRepository)
+	notebookService := service.NewNotebookService(notebookRepository, db)
 
 	// Controller
 	exampleController := controller.NewExampleController(exampleService)
