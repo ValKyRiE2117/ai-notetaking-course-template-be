@@ -13,10 +13,12 @@ import (
 )
 
 type INotebookService interface {
+	GetAll(ctx context.Context) ([]*dto.GetAllNotebookResponse, error)
 	Create(ctx context.Context, req *dto.CreateNotebookRequest) (*dto.CreateNotebookResponse, error)
 	Show(ctx context.Context, id uuid.UUID) (*dto.ShowNotebookResponse, error)
 	Update(ctx context.Context, req *dto.UpdateNotebookRequest) (*dto.UpdateNotebookResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	MoveNotebook(ctx context.Context, req *dto.MoveNotebookRequest) (*dto.MoveNotebookResponse, error)
 }
 
 type notebookService struct {
@@ -29,6 +31,30 @@ func NewNotebookService(notebookRepository repository.INotebookRepository, db *p
 		notebookRepository: notebookRepository,
 		db: db,
 	}
+}
+
+func (c * notebookService) GetAll(ctx context.Context) ([]*dto.GetAllNotebookResponse, error) {
+	
+	notebooks,err := c.notebookRepository.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*dto.GetAllNotebookResponse,0)
+	for _, notebook := range notebooks {
+		res := &dto.GetAllNotebookResponse{
+			Id: notebook.Id,
+			Name: notebook.Name,
+			ParentId: notebook.ParentId,
+			CreatedAt: notebook.CreatedAt,
+			UpdatedAt: notebook.UpdatedAt,
+		}
+		result = append([]*dto.GetAllNotebookResponse{res},result...)	
+	}
+
+	// Mapping DTO
+
+	return result, nil
 }
 
 func (c * notebookService) Create(ctx context.Context, req *dto.CreateNotebookRequest) (*dto.CreateNotebookResponse, error) {
@@ -122,3 +148,25 @@ func (c * notebookService) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (c * notebookService) MoveNotebook(ctx context.Context, req *dto.MoveNotebookRequest) (*dto.MoveNotebookResponse, error) {
+	_, err := c.notebookRepository.GetById(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.ParentId != nil {
+		_, err := c.notebookRepository.GetById(ctx, *req.ParentId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = c.notebookRepository.UpdateParentId(ctx, req.Id, req.ParentId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.MoveNotebookResponse{
+		Id: req.Id,
+	}, nil
+}
