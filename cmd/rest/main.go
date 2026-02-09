@@ -29,18 +29,22 @@ func main() {
 	// Repository
 	exampleRepository := repository.NewExampleRepository(db)
 	notebookRepository := repository.NewNotebookRepository(db)
+	noteRepository := repository.NewNoteRepository(db)
 
 	// Service
 	exampleService := service.NewExampleService(exampleRepository)
 	notebookService := service.NewNotebookService(notebookRepository, db)
+	noteService := service.NewNoteService(noteRepository)
 
 	// Controller
 	exampleController := controller.NewExampleController(exampleService)
 	notebookController := controller.NewNotebookController(notebookService)
+	noteController := controller.NewNoteController(noteService)
 
 	api := app.Group("/api")
 	exampleController.RegisterRoutes(api)
 	notebookController.RegisterRoutes(api)
+	noteController.RegisterRoutes(api)
 
 	log.Fatal(app.Listen(":3000"))
 }
