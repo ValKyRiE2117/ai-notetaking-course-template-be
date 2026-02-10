@@ -5,6 +5,7 @@ import (
 	"ai-notetaking-be/internal/entity"
 	"ai-notetaking-be/internal/repository"
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,9 +14,13 @@ import (
 type INoteService interface {
 	Create(ctx context.Context, req *dto.CreateNoteRequest) (*dto.CreateNoteResponse, error)
 	Show(ctx context.Context, id uuid.UUID) (*dto.ShowNoteResponse, error)
+	Update(ctx context.Context, req *dto.UpdateNoteRequest) (*dto.UpdateNoteResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	MoveNote(ctx context.Context, req *dto.MoveNoteRequest) (*dto.MoveNoteResponse, error)
 }
 
 type noteService struct {
+	publisherService IPublisherService
 	noteRepository repository.INoteRepository
 }
 
@@ -36,6 +41,20 @@ func (c * noteService) Create(ctx context.Context, req *dto.CreateNoteRequest) (
 	}
 
 	err := c.noteRepository.Create(ctx, &note)
+	if err != nil {
+		return nil, err
+	}
+
+	msgPayload := dto.PublishEmbedMessage{
+		NoteId: note.Id,
+	}
+
+	msgJson, err := json.Marshal(msgPayload)
+	if err != nil {
+		return nil, err
+	} 
+
+	err = c.publisherService.Publish(ctx, msgJson)
 	if err != nil {
 		return nil, err
 	}
@@ -62,4 +81,61 @@ func (c * noteService) Show(ctx context.Context, id uuid.UUID) (*dto.ShowNoteRes
 		// IsDeleted: note.IsDeleted,
 	}
 	return &res, nil
+}
+
+func (c * noteService) Update(ctx context.Context, req *dto.UpdateNoteRequest) (*dto.UpdateNoteResponse, error) {
+	note,err := c.noteRepository.GetById(ctx,req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	note.Title = req.Title
+	note.Content = req.Content
+	note.UpdatedAt = &now 
+
+	err = c.noteRepository.Update(ctx,note)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.UpdateNoteResponse{
+		Id: note.Id,
+	}, nil
+}
+
+func (c * noteService) Delete(ctx context.Context, id uuid.UUID) error{
+	_,err := c.noteRepository.GetById(ctx,id)
+	if err != nil {
+		return err
+	}
+
+	err = c.noteRepository.Delete(ctx,id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c * noteService) MoveNote(ctx context.Context, req *dto.MoveNoteRequest) (*dto.MoveNoteResponse, error){
+	note,err := c.noteRepository.GetById(ctx,req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	note.NotebookId = req.NotebookId
+	note.UpdatedAt = &now
+
+	err = c.noteRepository.Update(ctx,note)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.MoveNoteResponse{
+		Id: note.Id,
+	}, nil
 }

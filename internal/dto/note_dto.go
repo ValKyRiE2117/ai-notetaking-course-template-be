@@ -7,23 +7,44 @@ import (
 )	
 
 type CreateNoteRequest struct {
-	Title     	 string    		`json:"title" validate:"required"`
-	Content   	 string    		`json:"content"`
-	NotebookId	 uuid.UUID 		`json:"notebook_id" validate:"required"`
+	Title     	string    		`json:"title" validate:"required"`
+	Content   	string    		`json:"content"`
+	NotebookId	uuid.UUID 		`json:"notebook_id" validate:"required"`
 }
 
 type CreateNoteResponse struct {
-	Id uuid.UUID 				`json:"id"`
+	Id 			uuid.UUID 				`json:"id"`
 }
 
 type ShowNoteResponse struct {
-	Id uuid.UUID 				`json:"id"`
-	Title string 				`json:"title"`
-	Content string 				`json:"content"`
-	NotebookId uuid.UUID 		`json:"notebook_id"`
-	CreatedAt time.Time 		`json:"created_at"`
-	UpdatedAt *time.Time 		`json:"updated_at"`
+	Id 			uuid.UUID 		`json:"id"`
+	Title 		string 			`json:"title"`
+	Content 	string 			`json:"content"`
+	NotebookId 	uuid.UUID 		`json:"notebook_id"`
+	CreatedAt 	time.Time 		`json:"created_at"`
+	UpdatedAt 	*time.Time 		`json:"updated_at"`
 	// DeletedAt time.Time 		`json:"deleted_at"`
 	// IsDeleted bool 			`json:"is_deleted"`
 }
+
+type UpdateNoteRequest struct {
+	Id 			uuid.UUID 		`json:"id"`
+	Title   	string    		`json:"title" validate:"required"`
+	Content   	string    		`json:"content"`
+}
+
+type UpdateNoteResponse struct {
+	Id 			uuid.UUID 		`json:"id"`
+}
+
+type MoveNoteRequest struct {
+	Id 			uuid.UUID 		`json:"id"`
+	NotebookId  uuid.UUID    	`json:"notebook_id" validate:"required"`
+}
+
+type MoveNoteResponse struct {
+	Id 			uuid.UUID 		`json:"id"`
+}
+
+
 
