@@ -24,9 +24,10 @@ type noteService struct {
 	noteRepository repository.INoteRepository
 }
 
-func NewNoteService(noteRepository repository.INoteRepository) INoteService {
+func NewNoteService(noteRepository repository.INoteRepository, publisherService IPublisherService) INoteService {
 	return &noteService{
 		noteRepository: noteRepository,
+		publisherService: publisherService,
 	}
 }
 
@@ -45,7 +46,7 @@ func (c * noteService) Create(ctx context.Context, req *dto.CreateNoteRequest) (
 		return nil, err
 	}
 
-	msgPayload := dto.PublishEmbedMessage{
+	msgPayload := dto.PublishEmbedNoteMessage{
 		NoteId: note.Id,
 	}
 

@@ -9,7 +9,7 @@ import (
 )
 
 type IPublisherService interface {
-	Publish(ctx context.Context, topic string, payload []byte) error
+	Publish(ctx context.Context, payload []byte) error
 }
 
 type publisherService struct {
@@ -17,7 +17,7 @@ type publisherService struct {
 	topicName string
 }
 
-func (ps *publisherService) Publish(ctx context.Context, topic string, payload []byte) error {
+func (ps *publisherService) Publish(ctx context.Context, payload []byte) error {
 	err := ps.pubSub.Publish(ps.topicName, message.NewMessage(watermill.NewUUID(), payload))
 	if err != nil {
 		return err

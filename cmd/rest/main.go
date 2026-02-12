@@ -6,9 +6,12 @@ import (
 	"ai-notetaking-be/internal/repository"
 	"ai-notetaking-be/internal/service"
 	"ai-notetaking-be/pkg/database"
+	"context"
 	"log"
 	"os"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -32,9 +35,21 @@ func main() {
 	noteRepository := repository.NewNoteRepository(db)
 
 	// Service
+	WatermillLogger := watermill.NewStdLogger(false,false)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{},WatermillLogger)
+	publisherService := service.NewPublisherService(
+		"embed_note_content",
+		pubSub,
+	) 
+
+	consumerService := service.NewConsumerService(
+		pubSub,
+		"embed_note_content",
+	)
+
 	exampleService := service.NewExampleService(exampleRepository)
 	notebookService := service.NewNotebookService(notebookRepository, noteRepository, db)
-	noteService := service.NewNoteService(noteRepository)
+	noteService := service.NewNoteService(noteRepository,publisherService)
 
 	// Controller
 	exampleController := controller.NewExampleController(exampleService)
@@ -45,6 +60,11 @@ func main() {
 	exampleController.RegisterRoutes(api)
 	notebookController.RegisterRoutes(api)
 	noteController.RegisterRoutes(api)
+
+	err := consumerService.Consume(context.Background())
+	if err != nil {
+		panic(err)
+	}
 
 	log.Fatal(app.Listen(":3000"))
 }
